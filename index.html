@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/x-icon" href="/assets/logo.ico" />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+    />
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="wallpaper.css" />
+    <link rel="stylesheet" href="game.css" />
+    <title>Tres en raya</title>
+  </head>
+  <body class="d-flex flex-column">
+    <main
+      class="container d-flex flex-column align-items-center justify-content-center flex-grow-1"
+    >
+      <div
+        class="d-flex flex-column flex-md-row justify-content-center gap-1 p-3"
+      >
+        <button id="btnJvJ" class="btn btn-outline-light btn-lg">
+          Jugador vs. Jugador
+        </button>
+        <button id="btnJvCPU" class="btn btn-outline-light btn-lg">
+          Jugador vs. CPU
+        </button>
+        <button id="btnResetear" class="btn btn-outline-light btn-lg">
+          Resetear Victorias
+        </button>
+      </div>
+      <h2>Victorias X: <span id="victoriasX">0</span></h2>
+      <h2>Victorias O: <span id="victoriasO">0</span></h2>
+      <div class="gameWallpaper card p-4 mb-4 shadow-lg">
+        <h2>
+          Tiempo transcurrido: <span id="contadorMinutos">00</span>:<span
+            id="contadorSegundos"
+            >00</span
+          >
+        </h2>
+        <h2>
+          Turno de:
+          <span
+            id="turnoActual"
+            style="color: rgb(211, 38, 38); font-size: 1.2em"
+          ></span>
+        </h2>
+        <div class="tablero" id="tablero">
+          <div class="celda" data-coord="A1">
+            <span class="coordinates">A1</span>
+          </div>
+          <div class="celda" data-coord="A2">
+            <span class="coordinates">A2</span>
+          </div>
+          <div class="celda" data-coord="A3">
+            <span class="coordinates">A3</span>
+          </div>
+          <div class="celda" data-coord="B1">
+            <span class="coordinates">B1</span>
+          </div>
+          <div class="celda" data-coord="B2">
+            <span class="coordinates">B2</span>
+          </div>
+          <div class="celda" data-coord="B3">
+            <span class="coordinates">B3</span>
+          </div>
+          <div class="celda" data-coord="C1">
+            <span class="coordinates">C1</span>
+          </div>
+          <div class="celda" data-coord="C2">
+            <span class="coordinates">C2</span>
+          </div>
+          <div class="celda" data-coord="C3">
+            <span class="coordinates">C3</span>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <script>
+      // Declaración de variables
+      const DOM_btnPVP = document.getElementById("btnJvJ");
+      const DOM_btnPvCPU = document.getElementById("btnJvCPU");
+      const DOM_btnResetear = document.getElementById("btnResetear");
+      const DOM_tablero = document.getElementById("tablero");
+      const DOM_turnoActual = document.getElementById("turnoActual");
+      const DOM_contadorSegundos = document.getElementById("contadorSegundos");
+      const DOM_contadorMinutos = document.getElementById("contadorMinutos");
+      const DOM_victoriasX = document.getElementById("victoriasX");
+      const DOM_victoriasO = document.getElementById("victoriasO");
+      const markerX = "assets/X.png";
+      const markerO = "assets/O.png";
+      let tableroMatriz;
+      let turno;
+      let modoJuego;
+      let victorias = [0, 0];
+      let contadorSegundos;
+      let contador = false;
+      let activo = false;
+
+      // Función para inicializar y reestablecer las variables
+      function iniciarTablero(modo) {
+        tableroMatriz = {
+          A1: "",
+          A2: "",
+          A3: "",
+          B1: "",
+          B2: "",
+          B3: "",
+          C1: "",
+          C2: "",
+          C3: "",
+        };
+        turno = Math.random() < 0.5 ? "X" : "O";
+        DOM_turnoActual.textContent = `${turno}`;
+        DOM_tablero.querySelectorAll(".celda").forEach((celda) => {
+          celda.innerHTML = `
+                <span class="coordinates">${celda.dataset.coord}</span>
+            `;
+        });
+        activo = true;
+        modoJuego = modo;
+        contadorSegundos = 0;
+        iniciarJuego();
+      }
+
+      // Función para actualizar el modo activo visualmente
+      function actualizarModoActivo(botonActivo) {
+        [DOM_btnPVP, DOM_btnPvCPU].forEach((boton) => {
+          boton.className = "btn btn-outline-light btn-lg";
+        });
+        botonActivo.className = "btn btn-secondary btn-lg";
+      }
+
+      // Funciones de cada botón
+      function seleccionarPVP() {
+        actualizarModoActivo(DOM_btnPVP);
+        iniciarTablero("PvP");
+      }
+
+      function seleccionarPvCPU() {
+        actualizarModoActivo(DOM_btnPvCPU);
+        iniciarTablero("PvCPU");
+      }
+
+      function resetearVictorias() {
+        victorias[0] = 0;
+        victorias[1] = 0;
+        DOM_victoriasX.textContent = victorias[0];
+        DOM_victoriasO.textContent = victorias[1]; // Corrección: actualizamos DOM_victoriasO
+      }
+
+      // Asignar eventos de clic a los botones
+      DOM_btnPVP.addEventListener("click", seleccionarPVP);
+      DOM_btnPvCPU.addEventListener("click", seleccionarPvCPU);
+      DOM_btnResetear.addEventListener("click", resetearVictorias);
+    </script>
+
+    <!-- Logica del juego -->
+    <script>
+      function verificarVictoria(jugador) {
+        const combinacionesGanadoras = [
+          ["A1", "A2", "A3"],
+          ["B1", "B2", "B3"],
+          ["C1", "C2", "C3"],
+          ["A1", "B1", "C1"],
+          ["A2", "B2", "C2"],
+          ["A3", "B3", "C3"],
+          ["A1", "B2", "C3"],
+          ["A3", "B2", "C1"],
+        ];
+        return combinacionesGanadoras.some((combinacion) =>
+          combinacion.every((celda) => tableroMatriz[celda] === jugador)
+        );
+      }
+
+      function mostrarVictoria(result) {
+        if (result === "Empate") {
+          alert("¡Es un empate!");
+        } else {
+          alert(`Ganó el jugador: ${result}!!!!`);
+          if (result == "X") {
+            victorias[0] += 1;
+            DOM_victoriasX.textContent = victorias[0];
+          } else {
+            victorias[1] += 1;
+            DOM_victoriasO.textContent = victorias[1];
+          }
+        }
+      }
+
+      function reproducirSonido(turno) {
+        const sonido =
+          turno === "X"
+            ? new Audio("assets/sfx1.ogg")
+            : new Audio("assets/sfx2.ogg");
+        sonido.play();
+      }
+
+      function contarTiempo() {
+        if (activo) {
+          setTimeout(() => {
+            contadorSegundos += 1;
+
+            // Incrementar minutos y reiniciar segundos si es necesario
+            if (contadorSegundos === 60) {
+              contadorSegundos = 0;
+              const minutos = parseInt(DOM_contadorMinutos.textContent, 10) + 1;
+              DOM_contadorMinutos.textContent =
+                minutos < 10 ? `0${minutos}` : minutos;
+            }
+
+            // Formatear los segundos con un cero delante
+            DOM_contadorSegundos.textContent =
+              contadorSegundos < 10 ? `0${contadorSegundos}` : contadorSegundos;
+
+            contarTiempo(); // Llamada recursiva para continuar el conteo
+          }, 1000);
+        }
+      }
+
+      function iniciarJuego() {
+        if (!contador) {
+          contador = true;
+          DOM_contadorMinutos.textContent = "00";
+          DOM_contadorSegundos.textContent = "00";
+          contarTiempo();
+        }
+        DOM_tablero.querySelectorAll(".celda").forEach((celda) => {
+          celda.addEventListener("click", function () {
+            if (modoJuego == "PvP") {
+              realizarJugadaPvP(celda);
+            } else {
+              realizarJugadaPvCPU(celda);
+            }
+          });
+        });
+        if (turno === "O" && modoJuego != "PvP") {
+          setTimeout(() => {
+            realizarJugadaCPU();
+          }, 500); //milisegundos
+        }
+      }
+
+      // Función para manejar las jugadas en modo PvP
+      function realizarJugadaPvP(celda) {
+        if (celda.querySelector(".marker") || !activo) return;
+        reproducirSonido(turno);
+        // Agregar la marca del jugador
+        const markerDiv = document.createElement("div");
+        markerDiv.classList.add("marker");
+        markerDiv.style.backgroundImage = `url(${
+          turno === "X" ? markerX : markerO
+        })`;
+        celda.appendChild(markerDiv);
+
+        // Mantener visible la coordenada con opacidad reducida
+        const coordSpan = celda.querySelector(".coordinates");
+        coordSpan.style.opacity = "0.5";
+
+        // Se coloca dentro de la matriz el valor turno en la coordenada de la celda
+        const posicion = celda.dataset.coord;
+        tableroMatriz[posicion] = turno;
+
+        // Verificar victoria
+        if (verificarVictoria(turno)) {
+          activo = false;
+          mostrarVictoria(turno);
+          return;
+        }
+
+        // Verificar empate
+        if (Object.values(tableroMatriz).every((celda) => celda !== "")) {
+          activo = false;
+          mostrarVictoria("Empate");
+          return;
+        }
+
+        // Cambiar turno
+        turno = turno === "X" ? "O" : "X";
+        DOM_turnoActual.textContent = `${turno}`;
+      }
+
+      // Función para manejar las jugadas en modo PvCPU
+      function realizarJugadaPvCPU(celda) {
+        if (celda.querySelector(".marker") || !activo || turno !== "X") return;
+        reproducirSonido(turno);
+        // Marcar la jugada del jugador
+        const markerDiv = document.createElement("div");
+        markerDiv.classList.add("marker");
+        markerDiv.style.backgroundImage = `url(${markerX})`;
+        celda.appendChild(markerDiv);
+
+        const coordSpan = celda.querySelector(".coordinates");
+        coordSpan.style.opacity = "0.5";
+
+        const posicion = celda.dataset.coord;
+        tableroMatriz[posicion] = turno;
+
+        // Verificar si el jugador ha ganado
+        if (verificarVictoria(turno)) {
+          activo = false;
+          mostrarVictoria(turno);
+          return;
+        }
+
+        // Verificar empate
+        if (Object.values(tableroMatriz).every((celda) => celda !== "")) {
+          activo = false;
+          mostrarVictoria("Empate");
+          return;
+        }
+        turno = "O";
+        DOM_turnoActual.textContent = `${turno}`;
+        setTimeout(() => {
+          realizarJugadaCPU();
+        }, 500);
+      }
+
+      // Función para manejar las jugadas de la CPU
+      function realizarJugadaCPU() {
+        if (!activo || turno !== "O") return; // Asegurarse de que es el turno de la CPU
+
+        // Obtener la mejor jugada usando el algoritmo Minimax
+        const mejorMovimiento = obtenerMejorMovimiento();
+
+        // Realizar la jugada en el tablero
+        const celdaCPU = DOM_tablero.querySelector(
+          `.celda[data-coord="${mejorMovimiento}"]`
+        );
+        if (celdaCPU && !celdaCPU.querySelector(".marker")) {
+          reproducirSonido(turno);
+          // Agregar la marca de la CPU
+          const markerDiv = document.createElement("div");
+          markerDiv.classList.add("marker");
+          markerDiv.style.backgroundImage = `url(${markerO})`;
+          celdaCPU.appendChild(markerDiv);
+
+          const coordSpan = celdaCPU.querySelector(".coordinates");
+          coordSpan.style.opacity = "0.5";
+
+          // Actualizar el estado del tablero
+          tableroMatriz[mejorMovimiento] = "O";
+
+          // Verificar si la CPU ha ganado
+          if (verificarVictoria("O")) {
+            activo = false;
+            mostrarVictoria("O");
+            return;
+          }
+
+          // Verificar empate
+          if (Object.values(tableroMatriz).every((celda) => celda !== "")) {
+            activo = false;
+            mostrarVictoria("Empate");
+            return;
+          }
+
+          // Cambiar turno al jugador humano
+          turno = "X";
+          DOM_turnoActual.textContent = `${turno}`;
+        }
+      }
+
+      // Función para obtener el mejor movimiento con Minimax
+      function obtenerMejorMovimiento() {
+        let mejorValor = -Infinity;
+        let mejorMovimiento = null;
+
+        for (const celda in tableroMatriz) {
+          if (tableroMatriz[celda] === "") {
+            // Simular la jugada
+            tableroMatriz[celda] = "O";
+            const valor = minimax(false, -Infinity, Infinity);
+            tableroMatriz[celda] = ""; // Deshacer la jugada
+
+            if (valor > mejorValor) {
+              mejorValor = valor;
+              mejorMovimiento = celda;
+            }
+          }
+        }
+        return mejorMovimiento;
+      }
+
+      // Algoritmo Minimax con poda alfa-beta
+      function minimax(esMaximizador, alpha, beta) {
+        // Verificar si hay un ganador
+        if (verificarVictoria("O")) return 10;
+        if (verificarVictoria("X")) return -10;
+
+        // Verificar empate
+        if (Object.values(tableroMatriz).every((celda) => celda !== ""))
+          return 0;
+
+        if (esMaximizador) {
+          let mejorValor = -Infinity;
+
+          for (const celda in tableroMatriz) {
+            if (tableroMatriz[celda] === "") {
+              // Simular la jugada
+              tableroMatriz[celda] = "O";
+              const valor = minimax(false, alpha, beta);
+              tableroMatriz[celda] = ""; // Deshacer la jugada
+
+              mejorValor = Math.max(mejorValor, valor);
+              alpha = Math.max(alpha, mejorValor);
+              if (beta <= alpha) break; // Poda alfa-beta
+            }
+          }
+          return mejorValor;
+        } else {
+          let mejorValor = Infinity;
+
+          for (const celda in tableroMatriz) {
+            if (tableroMatriz[celda] === "") {
+              // Simular la jugada
+              tableroMatriz[celda] = "X";
+              const valor = minimax(true, alpha, beta);
+              tableroMatriz[celda] = ""; // Deshacer la jugada
+
+              mejorValor = Math.min(mejorValor, valor);
+              beta = Math.min(beta, mejorValor);
+              if (beta <= alpha) break; // Poda alfa-beta
+            }
+          }
+          return mejorValor;
+        }
+      }
+    </script>
+  </body>
+</html>
