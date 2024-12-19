@@ -4,7 +4,9 @@ A simple yet powerful project to play Tic-Tac-Toe, either against another person
 
 ---
 
+## 🖼️ **Preview**
 
+![Game Preview](readme.png)
 
 ---
 
